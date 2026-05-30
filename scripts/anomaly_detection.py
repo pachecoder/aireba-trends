@@ -55,15 +55,18 @@ def _classify_severity(
     moderate_threshold: float,
     extreme_threshold: float,
     z_score: float,
-    iforest_is_anomaly: bool,
+    iforest_is_relevant: bool,
 ) -> str:
+    abs_z_score = abs(z_score)
     if actual_value > extreme_threshold:
         return "Extreme"
     if actual_value > moderate_threshold:
-        if z_score >= 3 or iforest_is_anomaly:
+        if z_score >= 3 or iforest_is_relevant:
             return "High"
         return "Moderate"
-    if iforest_is_anomaly and z_score >= 2:
+    if iforest_is_relevant and abs_z_score >= 3:
+        return "High"
+    if iforest_is_relevant and abs_z_score >= 2:
         return "Moderate"
     return "Normal"
 
@@ -99,11 +102,16 @@ def detect_daily_anomalies(daily_df: pd.DataFrame) -> pd.DataFrame:
         ).fillna(0.0)
 
         working["iqr_is_anomaly"] = working["actual_value"] > moderate_threshold
-        working["is_anomaly"] = working["iqr_is_anomaly"] | working["iforest_is_anomaly"]
+        working["iforest_is_relevant"] = working["iforest_is_anomaly"] & (
+            working["z_score"].abs() >= 2
+        )
+        working["is_anomaly"] = (
+            working["iqr_is_anomaly"] | working["iforest_is_relevant"]
+        )
         working["method"] = np.where(
-            working["iqr_is_anomaly"] & working["iforest_is_anomaly"],
+            working["iqr_is_anomaly"] & working["iforest_is_relevant"],
             "IQR + Isolation Forest",
-            np.where(working["iforest_is_anomaly"], "Isolation Forest", "IQR"),
+            np.where(working["iforest_is_relevant"], "Isolation Forest", "IQR"),
         )
         working["severity"] = working.apply(
             lambda row: _classify_severity(
@@ -111,14 +119,16 @@ def detect_daily_anomalies(daily_df: pd.DataFrame) -> pd.DataFrame:
                 moderate_threshold=moderate_threshold,
                 extreme_threshold=extreme_threshold,
                 z_score=row["z_score"],
-                iforest_is_anomaly=bool(row["iforest_is_anomaly"]),
+                iforest_is_relevant=bool(row["iforest_is_relevant"]),
             ),
             axis=1,
         )
         frames.append(working)
 
     anomalies = pd.concat(frames, ignore_index=True)
-    anomalies = anomalies[anomalies["is_anomaly"]].copy()
+    anomalies = anomalies[
+        anomalies["is_anomaly"] & (anomalies["severity"] != "Normal")
+    ].copy()
     anomalies = anomalies[
         [
             "date",
@@ -144,7 +154,13 @@ def detect_daily_anomalies(daily_df: pd.DataFrame) -> pd.DataFrame:
     ]
     anomalies[numeric_columns] = anomalies[numeric_columns].round(4)
     anomalies["date"] = pd.to_datetime(anomalies["date"]).dt.strftime("%Y-%m-%d")
-    return anomalies.sort_values(
-        ["date", "severity", "percentage_difference"],
+    severity_order = {"Moderate": 1, "High": 2, "Extreme": 3}
+    anomalies["severity_rank"] = anomalies["severity"].map(severity_order).fillna(0)
+    anomalies["abs_percentage_difference"] = anomalies[
+        "percentage_difference"
+    ].abs()
+    anomalies = anomalies.sort_values(
+        ["date", "severity_rank", "abs_percentage_difference"],
         ascending=[False, False, False],
-    ).reset_index(drop=True)
+    ).drop(columns=["severity_rank", "abs_percentage_difference"])
+    return anomalies.reset_index(drop=True)

@@ -1,5 +1,5 @@
-station,pollutants_count,avg_value,max_value,min_value,records_count
-Centenario,3,14.7638,427.0,-2.0,343983
-Córdoba,3,16.1278,283.0,0.0,300717
-La Boca,3,17.0873,387.0,0.0,331017
-Palermo,1,1.0018,3.7,0.0,5942
+station,pollutants,pollutants_count,first_date,latest_date,records_count
+Centenario,"CO, NO2, PM10",3,2009-10-01,2026-05-22,343719
+Córdoba,"CO, NO2, PM10",3,2009-10-01,2026-05-22,300331
+La Boca,"CO, NO2, PM10",3,2009-10-01,2026-05-22,330776
+Palermo,CO,1,2009-10-01,2010-06-30,5874

@@ -1,7 +1,7 @@
 {
   "project_name": "AireBA Trends",
   "data_source": "Official open data from the Government of Buenos Aires City.",
-  "methodology": "Air quality records are normalized from wide to long format, aggregated to daily values, and analyzed per station and pollutant with an IQR statistical baseline plus Isolation Forest when enough history exists.",
+  "methodology": "Air quality records are normalized from wide to long format, non-positive pollutant placeholders are removed, values are aggregated to daily level, and each station-pollutant series is analyzed with an IQR statistical baseline plus Isolation Forest when enough history exists.",
   "limitations": [
     "This project is historical and exploratory.",
     "This project is not a real-time alert system.",
@@ -11,7 +11,8 @@
   ],
   "anomaly_methods": [
     "IQR baseline on daily averages by station and pollutant.",
-    "Isolation Forest on temporal features such as day of week and rolling windows when enough data is available."
+    "Isolation Forest on temporal features such as day of week and rolling windows when enough data is available.",
+    "Isolation Forest flags are kept as anomalies only when the absolute z-score is at least 2, to avoid reporting weak model-only points as unusual events."
   ],
   "anomaly_rate_note": "Percentages for detected anomalies should be interpreted over the daily aggregated table because anomaly detection runs on daily records, not on the hourly long table.",
   "units": {

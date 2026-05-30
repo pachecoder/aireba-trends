@@ -9,10 +9,10 @@
     "PM10"
   ],
   "stations_count": 4,
-  "total_records": 981659,
-  "anomalies_detected": 2309,
-  "daily_records": 43266,
-  "anomaly_rate_daily_pct": 5.34,
+  "total_records": 980700,
+  "anomalies_detected": 1477,
+  "daily_records": 43238,
+  "anomaly_rate_daily_pct": 3.42,
   "anomaly_rate_note": "The anomaly count is measured against daily aggregated records, not hourly records.",
   "overlap_groups_resolved": 32040
 }

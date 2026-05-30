@@ -86,7 +86,7 @@
             <div class="hc-head">
               <div>
                 <div class="hc-title">NO₂ · promedio ciudad</div>
-                <div class="hc-sub">4 estaciones · 2009 – 2026</div>
+                <div class="hc-sub">Promedio ponderado por registros diarios</div>
               </div>
               <div class="hc-trend" id="heroTrend"></div>
             </div>
@@ -178,7 +178,7 @@
         <div class="panel-head">
           <div>
             <h3>Tendencia anual por estación</h3>
-            <div class="ph-sub">¿Cómo evolucionaron NO₂, CO o PM10 entre 2009 y 2026?</div>
+            <div class="ph-sub">Promedios diarios por estación; se omiten años con menos de 30 días medidos.</div>
           </div>
           <div class="ph-meta" id="ctxYearly"></div>
         </div>
@@ -193,7 +193,7 @@
         <div class="panel-head">
           <div>
             <h3>Patrón estacional — mapa de calor año × mes</h3>
-            <div class="ph-sub">¿Hay patrones estacionales o mensuales de contaminación?</div>
+            <div class="ph-sub">Promedio mensual ponderado por días medidos; celdas con muy baja cobertura quedan vacías.</div>
           </div>
           <div class="ph-meta" id="ctxMonthly"></div>
         </div>
@@ -242,13 +242,13 @@
       <div class="two-col">
         <div class="panel reveal">
           <div class="panel-head">
-            <div><h3>Anomalías por año y contaminante</h3><div class="ph-sub">Conteo apilado por tipo</div></div>
+            <div><h3>Tasa de anomalías por año</h3><div class="ph-sub">Porcentaje sobre estación-días, apilado por método de detección.</div></div>
           </div>
           <div class="panel-body"><div id="chartAnomCount" class="plot" style="height:340px"></div></div>
         </div>
         <div class="panel reveal">
           <div class="panel-head">
-            <div><h3>Top 15 por diferencia porcentual</h3><div class="ph-sub">Según filtros activos</div></div>
+            <div><h3>Top 15 por diferencia porcentual</h3><div class="ph-sub">Ordenado por magnitud absoluta según filtros activos.</div></div>
           </div>
           <div class="panel-body"><div id="chartAnomTop" class="plot" style="height:340px"></div></div>
         </div>

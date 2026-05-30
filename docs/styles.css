@@ -386,12 +386,14 @@ table.anom td.date { font-family: var(--font-mono); font-size: 12.5px; color: va
   padding: 3px 9px; border-radius: 999px; letter-spacing: .02em;
 }
 .sev .sw { width: 6px; height: 6px; border-radius: 50%; }
+.sev.Normal { color: var(--text-mut); background: var(--surface-2); }
 .sev.Moderate { color: var(--sev-mod); background: color-mix(in srgb, var(--sev-mod) 14%, transparent); }
 .sev.High     { color: var(--co); background: var(--co-soft); }
 .sev.Extreme  { color: var(--no2); background: var(--no2-soft); }
-.sev.Moderate .sw { background: var(--sev-mod); } .sev.High .sw { background: var(--co); } .sev.Extreme .sw { background: var(--no2); }
+.sev.Normal .sw { background: var(--text-faint); } .sev.Moderate .sw { background: var(--sev-mod); } .sev.High .sw { background: var(--co); } .sev.Extreme .sw { background: var(--no2); }
 .method-cell { color: var(--text-mut); font-size: 12.5px; }
 .pct-up { color: var(--no2); font-weight: 700; }
+.pct-down { color: var(--brand); font-weight: 700; }
 
 .tbl-foot { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; gap: 14px; }
 .tbl-foot .info { font-size: 12.5px; color: var(--text-faint); }

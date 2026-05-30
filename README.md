@@ -29,6 +29,7 @@ The pipeline:
 - loads raw official datasets from `data/raw/`
 - cleans and normalizes mixed CSV and Excel sources
 - resolves overlapping source files and duplicate observations
+- removes non-positive pollutant placeholders before aggregation
 - transforms air quality data from wide format to long format
 - aggregates hourly measurements into daily values
 - calculates yearly and monthly pollutant trends
@@ -39,11 +40,11 @@ The pipeline:
 The dashboard:
 
 - shows summary cards
-- lets users filter by pollutant, station, year, and anomaly severity
+- lets users filter by pollutant, station, and anomaly severity
 - displays yearly pollutant trends
 - displays monthly seasonality as a heatmap
 - shows an anomaly ranking table
-- shows anomaly charts
+- shows anomaly rate and ranking charts
 - shows official monitoring stations on a map
 
 ## Why This Project Matters
@@ -224,6 +225,13 @@ Main statistics:
 - standard deviation
 - record count
 
+Dashboard trend views apply lightweight coverage rules so sparse periods do not look like full-year or full-month trends:
+
+- annual station points require at least 30 daily records
+- city-level annual comparisons require at least 300 daily records
+- monthly heatmap cells with very low coverage are left empty
+- 2026 is treated as a partial year because the latest available date is 2026-05-22
+
 ### Anomaly detection
 
 The project uses daily aggregated data to detect unusual pollution events.
@@ -232,6 +240,7 @@ Implemented methods:
 
 - IQR baseline by `station + pollutant`
 - Isolation Forest by `station + pollutant` when enough historical data exists
+- Isolation Forest flags are kept as anomalies only when `abs(z_score) >= 2`
 
 Isolation Forest features currently include:
 
@@ -246,6 +255,7 @@ Isolation Forest features currently include:
 Important note:
 
 - anomaly rates are measured against the daily aggregated table, not the hourly long table
+- weak model-only flags are not exported as anomaly events
 
 Detected anomalies indicate unusual values. They do not prove the cause of the event.
 
@@ -256,7 +266,9 @@ The frontend is intentionally static:
 - no backend
 - no client-side model training
 - no live data fetching from official sources
-- no recalculation of trends or anomalies in the browser
+- no recalculation of raw trends or anomaly detection in the browser
+
+The browser only performs lightweight display aggregations, such as weighted city averages and anomaly rates, using the preprocessed JSON files.
 
 All heavy processing happens in Python before export.
 

@@ -40,6 +40,9 @@ def transform_wide_to_long(
     long_df = long_df.drop(columns=["measurement", "station_name"])
     long_df["value"] = pd.to_numeric(long_df["value"], errors="coerce")
     long_df = long_df.dropna(subset=["value"]).reset_index(drop=True)
+    # Non-positive concentrations in these official files behave like missing/sensor
+    # placeholders and can create artificial drops in yearly and anomaly charts.
+    long_df = long_df[long_df["value"] > 0].copy()
 
     ordered_columns = [
         "datetime",

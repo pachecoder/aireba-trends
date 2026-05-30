@@ -16,7 +16,12 @@
 
   const POLLUTANTS = ["NO2", "CO", "PM10"];
   const POL_LABEL = { NO2: "NO₂", CO: "CO", PM10: "PM10" };
+  const METHOD_ORDER = ["IQR", "IQR + Isolation Forest", "Isolation Forest"];
   const MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const MIN_STATION_YEAR_RECORDS = 30;
+  const MIN_CITY_YEAR_RECORDS = 300;
+  const MIN_STATION_MONTH_RECORDS = 5;
+  const MIN_CITY_MONTH_RECORDS = 15;
 
   /* ---------- helpers ---------- */
   const $ = (s, r = document) => r.querySelector(s);
@@ -35,10 +40,24 @@
   };
   const stationList = () => [...new Set((STATE.data?.stations || []).map((s) => normalizeStationName(s.station)))];
   const stationColor = (station) => STATION_COLOR()[normalizeStationName(station)] || cssvar("--brand");
+  const methodColor = (method) => ({
+    IQR: cssvar("--text-faint"),
+    "IQR + Isolation Forest": cssvar("--pm10"),
+    "Isolation Forest": cssvar("--brand"),
+  })[method] || cssvar("--text-mut");
   const allYears = () => {
     const years = [];
     for (let y = STATE.data.summary.period_start; y <= STATE.data.summary.period_end; y++) years.push(y);
     return years;
+  };
+  const isReliableYearRow = (row) => (Number(row.records_count) || 0) >= MIN_STATION_YEAR_RECORDS;
+  const availableStationsForPollutant = (pollutant) => {
+    const stations = new Set(
+      STATE.data.yearly_trends
+        .filter((row) => row.pollutant === pollutant && isReliableYearRow(row))
+        .map((row) => row.station)
+    );
+    return stations.size;
   };
 
   function formatNumber(n, dec) {
@@ -185,7 +204,7 @@
 
   function updateActiveContext() {
     const f = STATE.filters;
-    $("#ctxYearly") && ($("#ctxYearly").textContent = `${POL_LABEL[f.pollutant]} · ${f.station === "All" ? "4 estaciones" : f.station}`);
+    $("#ctxYearly") && ($("#ctxYearly").textContent = `${POL_LABEL[f.pollutant]} · ${f.station === "All" ? availableStationsForPollutant(f.pollutant) + " estaciones" : f.station}`);
     $("#ctxMonthly") && ($("#ctxMonthly").textContent = `${POL_LABEL[f.pollutant]} · ${f.station === "All" ? "promedio ciudad" : f.station}`);
   }
 
@@ -214,13 +233,15 @@
     const f = STATE.filters;
     const sc = STATION_COLOR();
     const rows = STATE.data.yearly_trends.filter(d =>
-      d.pollutant === f.pollutant
+      d.pollutant === f.pollutant && isReliableYearRow(d)
     );
     const stations = f.station === "All" ? stationList() : [f.station];
     const traces = [];
+    const activeStations = [];
     stations.forEach(st => {
       const sr = rows.filter(d => d.station === st).sort((a, b) => a.year - b.year);
       if (!sr.length) return;
+      activeStations.push(st);
       // min-max band only when a single station is selected
       if (stations.length === 1) {
         traces.push({
@@ -232,10 +253,11 @@
       }
       traces.push({
         x: sr.map(d => d.year), y: sr.map(d => d.avg_value),
+        customdata: sr.map(d => d.records_count),
         mode: "lines+markers", name: st, type: "scatter",
         line: { color: stationColor(st), width: 2.6, shape: "spline", smoothing: .6 },
         marker: { color: stationColor(st), size: 5.5, line: { color: cssvar("--surface"), width: 1.5 } },
-        hovertemplate: `<b>${st}</b><br>%{x} · %{y:.1f} ${unitOf(f.pollutant)}<extra></extra>`,
+        hovertemplate: `<b>${st}</b><br>%{x} · %{y:.1f} ${unitOf(f.pollutant)}<br>%{customdata} días medidos<extra></extra>`,
       });
     });
     const lay = baseLayout();
@@ -243,7 +265,7 @@
     lay.yaxis.title = { text: `${POL_LABEL[f.pollutant]} promedio anual (${unitOf(f.pollutant)})`, font: { size: 12, color: cssvar("--text-faint") }, standoff: 12 };
     lay.xaxis.dtick = 2;
     Plotly.react("chartYearly", traces, lay, PCONFIG);
-    renderYearlyLegend(stations, sc);
+    renderYearlyLegend(activeStations, sc);
   }
   function renderYearlyLegend(stations, sc) {
     const el = $("#legendYearly"); if (!el) return;
@@ -259,6 +281,7 @@
       d.pollutant === f.pollutant
     );
     if (f.station !== "All") rows = rows.filter(d => d.station === f.station);
+    if (f.station !== "All") rows = rows.filter(d => (Number(d.records_count) || 0) >= MIN_STATION_MONTH_RECORDS);
     const years = allYears();
     // Weighted by monthly daily coverage so sparse station-months do not dominate the city view.
     const acc = {};
@@ -272,11 +295,15 @@
     });
     const z = MONTHS_ES.map((_, mi) => years.map(y => {
       const a = acc[y + "-" + (mi + 1)];
-      return a ? a.s / a.n : null;
+      const minRecords = f.station === "All" ? MIN_CITY_MONTH_RECORDS : MIN_STATION_MONTH_RECORDS;
+      return a && a.n >= minRecords ? a.s / a.n : null;
     }));
     const coverage = MONTHS_ES.map((_, mi) => years.map(y => {
       const a = acc[y + "-" + (mi + 1)];
-      return a ? [`${a.stations.size} estaciones`, `${a.n} días agregados`] : ["Sin datos", ""];
+      if (!a) return ["Sin datos", ""];
+      const minRecords = f.station === "All" ? MIN_CITY_MONTH_RECORDS : MIN_STATION_MONTH_RECORDS;
+      const quality = a.n >= minRecords ? `${a.n} días agregados` : `${a.n} días, cobertura baja`;
+      return [`${a.stations.size} estaciones`, quality];
     }));
     const col = polColor(f.pollutant);
     const lay = baseLayout();
@@ -306,6 +333,12 @@
     );
   }
   const SEV_ORDER = { Normal: 0, Moderate: 1, High: 2, Extreme: 3 };
+  function signedPercent(value, decimals = 1) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "—";
+    const sign = numeric > 0 ? "+" : "";
+    return `${sign}${formatNumber(numeric, decimals)}%`;
+  }
   function renderAnomaliesTable() {
     const all = filteredAnomalies();
     const { key, dir } = STATE.sort;
@@ -330,13 +363,18 @@
           <td><span class="pol-tag"><span class="sw" style="background:${polColor(a.pollutant)}"></span>${POL_LABEL[a.pollutant]}</span></td>
           <td class="num">${formatNumber(a.actual_value, a.pollutant === "CO" ? 2 : 1)}</td>
           <td class="num">${formatNumber(a.expected_value, a.pollutant === "CO" ? 2 : 1)}</td>
-          <td class="num pct-up">+${formatNumber(a.percentage_difference, 1)}%</td>
+          <td class="num ${a.percentage_difference < 0 ? "pct-down" : "pct-up"}">${signedPercent(a.percentage_difference, 1)}</td>
           <td class="num">${formatNumber(a.z_score, 2)}</td>
           <td><span class="sev ${a.severity}"><span class="sw"></span>${sevLabel[a.severity]}</span></td>
           <td class="method-cell">${a.method}</td>
         </tr>`).join("");
     }
-    $("#anomCount").textContent = `${all.length} anomalías coinciden · mostrando top ${Math.min(STATE.topN, all.length)}`;
+    const methodBreakdown = METHOD_ORDER
+      .map(method => [method, all.filter(a => a.method === method).length])
+      .filter(([, count]) => count > 0)
+      .map(([method, count]) => `${method}: ${count}`)
+      .join(" · ");
+    $("#anomCount").textContent = `${all.length} anomalías coinciden · mostrando top ${Math.min(STATE.topN, all.length)}${methodBreakdown ? " · " + methodBreakdown : ""}`;
     // header sort indicators
     $$("#anomTable thead th.sortable").forEach(th => {
       if (th.dataset.key === key) { th.setAttribute("data-sorted", dir); th.querySelector(".arr").textContent = dir === "asc" ? "▲" : "▼"; }
@@ -355,22 +393,43 @@
     const f = STATE.filters;
     let rows = STATE.data.anomalies.filter(a =>
       (f.station === "All" || a.station === f.station) &&
+      a.pollutant === f.pollutant &&
       (f.severity === "All" || a.severity === f.severity));
     const years = allYears();
-    const traces = POLLUTANTS.map(p => ({
-      type: "bar", name: POL_LABEL[p],
-      x: years, y: years.map(y => rows.filter(a => a.pollutant === p && +normalizeDateValue(a.date).slice(0, 4) === y).length),
-      marker: { color: polColor(p) },
-      hovertemplate: `<b>${POL_LABEL[p]}</b> · %{x}<br>%{y} anomalías<extra></extra>`,
-    }));
+    const denominatorFor = (year) => {
+      const trendRows = STATE.data.yearly_trends.filter((row) =>
+        row.year === year &&
+        row.pollutant === f.pollutant &&
+        isReliableYearRow(row) &&
+        (f.station === "All" || row.station === f.station)
+      );
+      const days = trendRows.reduce((sum, row) => sum + (Number(row.records_count) || 0), 0);
+      const minDays = f.station === "All" ? MIN_CITY_YEAR_RECORDS : MIN_STATION_YEAR_RECORDS;
+      return days >= minDays ? days : null;
+    };
+    const denominators = years.map(denominatorFor);
+    const denominatorLabel = f.station === "All" ? "estación-días" : "días medidos";
+    const traces = METHOD_ORDER.map(method => {
+      const counts = years.map(y => rows.filter(a =>
+        a.method === method && +normalizeDateValue(a.date).slice(0, 4) === y
+      ).length);
+      const rates = years.map((_, i) => denominators[i] ? counts[i] / denominators[i] * 100 : null);
+      return {
+        type: "bar", name: method,
+        x: years, y: rates,
+        customdata: counts.map((count, i) => [count, denominators[i] || 0]),
+        marker: { color: methodColor(method) },
+        hovertemplate: `<b>${method}</b> · ${POL_LABEL[f.pollutant]} · %{x}<br>%{y:.1f}% de ${denominatorLabel}<br>%{customdata[0]} anomalías / %{customdata[1]} ${denominatorLabel}<extra></extra>`,
+      };
+    });
     const lay = baseLayout();
     lay.barmode = "stack"; lay.showlegend = true; lay.xaxis.dtick = 2;
-    lay.yaxis.title = { text: "Anomalías por año", font: { size: 12, color: cssvar("--text-faint") }, standoff: 12 };
+    lay.yaxis.title = { text: `Anomalías / ${denominatorLabel} (%)`, font: { size: 12, color: cssvar("--text-faint") }, standoff: 12 };
     Plotly.react("chartAnomCount", traces, lay, PCONFIG);
   }
   function renderAnomTopChart() {
     const all = filteredAnomalies();
-    const top = [...all].sort((a, b) => b.percentage_difference - a.percentage_difference).slice(0, 15).reverse();
+    const top = [...all].sort((a, b) => Math.abs(b.percentage_difference) - Math.abs(a.percentage_difference)).slice(0, 15).reverse();
     const lay = baseLayout();
     lay.margin = { l: 150, r: 26, t: 10, b: 40 };
     lay.xaxis.title = { text: "Diferencia vs. esperado (%)", font: { size: 12, color: cssvar("--text-faint") }, standoff: 10 };
@@ -380,10 +439,10 @@
       y: top.map(a => `${a.station} · ${normalizeDateValue(a.date).slice(5)}`),
       x: top.map(a => a.percentage_difference),
       marker: { color: top.map(a => polColor(a.pollutant)) },
-      text: top.map(a => "+" + a.percentage_difference.toFixed(0) + "%"),
+      text: top.map(a => signedPercent(a.percentage_difference, 0)),
       textposition: "outside", textfont: { size: 11, color: cssvar("--text-mut"), family: "Space Mono, monospace" },
       cliponaxis: false,
-      hovertemplate: top.map(a => `<b>${a.station}</b> · ${formatDate(a.date)}<br>${POL_LABEL[a.pollutant]} · +${a.percentage_difference}% · z=${a.z_score}<extra></extra>`),
+      hovertemplate: top.map(a => `<b>${a.station}</b> · ${formatDate(a.date)}<br>${POL_LABEL[a.pollutant]} · ${signedPercent(a.percentage_difference, 1)} · z=${a.z_score}<br>${a.method}<extra></extra>`),
     };
     if (!top.length) { Plotly.react("chartAnomTop", [], lay, PCONFIG); return; }
     Plotly.react("chartAnomTop", [trace], lay, PCONFIG);
@@ -462,21 +521,38 @@
   }
   function renderHero() {
     const pollutant = STATE.filters.pollutant;
-    const rows = STATE.data.yearly_trends.filter(d => d.pollutant === pollutant);
-    const years = []; for (let y = STATE.data.summary.period_start; y <= STATE.data.summary.period_end; y++) years.push(y);
-    const cityAvg = years.map(y => {
+    const rows = STATE.data.yearly_trends.filter(d => d.pollutant === pollutant && isReliableYearRow(d));
+    const years = allYears();
+    const series = years.map(y => {
       const yr = rows.filter(d => d.year === y);
-      return yr.length ? yr.reduce((a, b) => a + b.avg_value, 0) / yr.length : NaN;
+      const records = yr.reduce((sum, row) => sum + (Number(row.records_count) || 0), 0);
+      const avg = records
+        ? yr.reduce((sum, row) => sum + row.avg_value * (Number(row.records_count) || 0), 0) / records
+        : NaN;
+      return { year: y, avg, records, stations: new Set(yr.map((row) => row.station)).size };
     });
-    const validAvg = cityAvg.filter((value) => Number.isFinite(value));
-    if (!validAvg.length) return;
-    const first = validAvg[0], last = validAvg[validAvg.length - 1];
-    const change = first ? ((last - first) / first) * 100 : 0;
+    const comparableSeries = series.filter((point) =>
+      Number.isFinite(point.avg) && point.avg > 0 && point.records >= MIN_CITY_YEAR_RECORDS
+    );
+    if (!comparableSeries.length) return;
+    const latestPoint = comparableSeries[comparableSeries.length - 1];
+    const firstYear = comparableSeries[0].year;
+    const lastFullYear = latestCompleteYear();
+    const recentStart = Math.max(firstYear, lastFullYear - 2);
+    const baselineYears = years.filter((year) => year >= firstYear && year <= firstYear + 2);
+    const recentYears = years.filter((year) => year >= recentStart && year <= lastFullYear);
+    const baselineAvg = weightedAverageForYears(rows, baselineYears);
+    const recentAvg = weightedAverageForYears(rows, recentYears);
+    const change = baselineAvg ? ((recentAvg - baselineAvg) / baselineAvg) * 100 : null;
+    const latestStatus = latestPoint.year > lastFullYear ? `${latestPoint.year} parcial` : String(latestPoint.year);
+    const chartAvg = series.map((point) =>
+      Number.isFinite(point.avg) && point.avg > 0 && point.records >= MIN_CITY_YEAR_RECORDS ? point.avg : null
+    );
     $(".hc-title") && ($(".hc-title").textContent = `${POL_LABEL[pollutant]} · promedio ciudad`);
-    $(".hc-sub") && ($(".hc-sub").textContent = `4 estaciones · ${STATE.data.summary.period_start} – ${STATE.data.summary.period_end}`);
+    $(".hc-sub") && ($(".hc-sub").textContent = `${latestPoint.stations} estaciones · ${latestStatus} · ponderado por registros`);
     $(".hc-legend span") && ($(".hc-legend span").innerHTML = `<i style="background:${polColor(pollutant)}"></i>Promedio anual de ${POL_LABEL[pollutant]} (${unitOf(pollutant)})`);
-    $("#heroBig").innerHTML = `${last.toFixed(1)}<span class="hc-unit"> ${unitOf(pollutant) || ""}</span>`;
-    $("#heroTrend").innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="14" height="14"><path d="M17 7L7 17M7 17h7M7 17v-7"/></svg> ${change.toFixed(0)}% vs. ${STATE.data.summary.period_start}`;
+    $("#heroBig").innerHTML = `${latestPoint.avg.toFixed(1)}<span class="hc-unit"> ${unitOf(pollutant) || ""}</span>`;
+    $("#heroTrend").innerHTML = trendBadge(change, recentYears, baselineYears);
     const col = polColor(pollutant);
     const lay = {
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
@@ -486,11 +562,37 @@
       hoverlabel: { bgcolor: cssvar("--surface"), bordercolor: cssvar("--border"), font: { family: "Hanken Grotesk", color: cssvar("--text"), size: 12 } },
     };
     const traces = [
-      { x: years, y: cityAvg.map(v => v + 0), fill: "tozeroy", fillcolor: hexA(col, .12), line: { width: 0 }, hoverinfo: "skip", type: "scatter" },
-      { x: years, y: cityAvg, mode: "lines", line: { color: col, width: 2.6, shape: "spline" }, type: "scatter",
+      { x: years, y: chartAvg, fill: "tozeroy", fillcolor: hexA(col, .12), line: { width: 0 }, hoverinfo: "skip", type: "scatter" },
+      { x: years, y: chartAvg, mode: "lines", line: { color: col, width: 2.6, shape: "spline" }, type: "scatter",
         hovertemplate: `%{x}<br><b>%{y:.1f} ${unitOf(pollutant) || ""}</b><extra></extra>` },
     ];
     Plotly.react("heroSpark", traces, lay, { responsive: true, displayModeBar: false, staticPlot: false });
+  }
+  function latestCompleteYear() {
+    const latest = STATE.data.summary.latest_available_date || `${STATE.data.summary.period_end}-12-31`;
+    const [year, month, day] = latest.split("-").map(Number);
+    return month === 12 && day === 31 ? year : year - 1;
+  }
+  function weightedAverageForYears(rows, selectedYears) {
+    const selected = new Set(selectedYears);
+    const validRows = rows.filter((row) => selected.has(row.year));
+    const records = validRows.reduce((sum, row) => sum + (Number(row.records_count) || 0), 0);
+    if (!records) return null;
+    return validRows.reduce((sum, row) => sum + row.avg_value * (Number(row.records_count) || 0), 0) / records;
+  }
+  function compactYearRange(selectedYears) {
+    const validYears = selectedYears.filter((year) => Number.isFinite(year));
+    if (!validYears.length) return "";
+    const first = validYears[0];
+    const last = validYears[validYears.length - 1];
+    return first === last ? String(first) : `${first}–${String(last).slice(-2)}`;
+  }
+  function trendBadge(change, recentYears, baselineYears) {
+    if (!Number.isFinite(change)) return "Sin base comparable";
+    const icon = change <= 0
+      ? `<path d="M17 7L7 17M7 17h7M7 17v-7"/>`
+      : `<path d="M7 17L17 7M17 7h-7M17 7v7"/>`;
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="14" height="14">${icon}</svg> ${change.toFixed(0)}% · ${compactYearRange(recentYears)} vs. ${compactYearRange(baselineYears)}`;
   }
 
   /* ---------- utilidades color ---------- */

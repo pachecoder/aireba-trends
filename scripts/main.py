@@ -1,3 +1,5 @@
+import pandas as pd
+
 from export_static_data import export_csv, export_json, export_json_object
 from load_data import (
     load_air_quality_data,
@@ -16,37 +18,53 @@ from anomaly_detection import detect_daily_anomalies
 
 
 def build_station_summary(long_df):
-    return (
+    summary = (
         long_df.groupby("station", dropna=False)
         .agg(
+            pollutants=(
+                "pollutant",
+                lambda values: ", ".join(sorted(values.dropna().unique())),
+            ),
             pollutants_count=("pollutant", "nunique"),
-            avg_value=("value", "mean"),
-            max_value=("value", "max"),
-            min_value=("value", "min"),
+            first_date=("date", "min"),
+            latest_date=("date", "max"),
             records_count=("value", "count"),
         )
         .reset_index()
-        .round({"avg_value": 4, "max_value": 4, "min_value": 4})
     )
+    summary["first_date"] = pd.to_datetime(summary["first_date"]).dt.strftime("%Y-%m-%d")
+    summary["latest_date"] = pd.to_datetime(summary["latest_date"]).dt.strftime(
+        "%Y-%m-%d"
+    )
+    return summary
 
 
-def build_pollutant_summary(long_df):
+def build_pollutant_summary(daily_df):
     return (
-        long_df.groupby("pollutant", dropna=False)
+        daily_df.groupby("pollutant", dropna=False)
         .agg(
             stations_count=("station", "nunique"),
-            avg_value=("value", "mean"),
-            max_value=("value", "max"),
-            min_value=("value", "min"),
-            records_count=("value", "count"),
+            avg_daily_value=("daily_avg", "mean"),
+            max_daily_value=("daily_max", "max"),
+            min_daily_value=("daily_min", "min"),
+            daily_records_count=("daily_avg", "count"),
+            source_records_count=("records_count", "sum"),
         )
         .reset_index()
-        .round({"avg_value": 4, "max_value": 4, "min_value": 4})
+        .round(
+            {
+                "avg_daily_value": 4,
+                "max_daily_value": 4,
+                "min_daily_value": 4,
+            }
+        )
     )
 
 
 def build_summary(long_df, daily_df, anomalies_df, stations_df, overlap_report_df):
-    anomaly_rate_daily = (len(anomalies_df) / len(daily_df) * 100) if len(daily_df) else 0.0
+    anomaly_rate_daily = (
+        len(anomalies_df) / len(daily_df) * 100 if len(daily_df) else 0.0
+    )
     return {
         "project_name": "AireBA Trends",
         "period_start": int(long_df["year"].min()),
@@ -72,7 +90,7 @@ def build_metadata(pollutants_df):
     return {
         "project_name": "AireBA Trends",
         "data_source": "Official open data from the Government of Buenos Aires City.",
-        "methodology": "Air quality records are normalized from wide to long format, aggregated to daily values, and analyzed per station and pollutant with an IQR statistical baseline plus Isolation Forest when enough history exists.",
+        "methodology": "Air quality records are normalized from wide to long format, non-positive pollutant placeholders are removed, values are aggregated to daily level, and each station-pollutant series is analyzed with an IQR statistical baseline plus Isolation Forest when enough history exists.",
         "limitations": [
             "This project is historical and exploratory.",
             "This project is not a real-time alert system.",
@@ -83,6 +101,7 @@ def build_metadata(pollutants_df):
         "anomaly_methods": [
             "IQR baseline on daily averages by station and pollutant.",
             "Isolation Forest on temporal features such as day of week and rolling windows when enough data is available.",
+            "Isolation Forest flags are kept as anomalies only when the absolute z-score is at least 2, to avoid reporting weak model-only points as unusual events.",
         ],
         "anomaly_rate_note": "Percentages for detected anomalies should be interpreted over the daily aggregated table because anomaly detection runs on daily records, not on the hourly long table.",
         "units": units,
@@ -104,7 +123,7 @@ def main() -> None:
     monthly_trends_df = calculate_monthly_trends(daily_df)
     anomalies_df = detect_daily_anomalies(daily_df)
     station_summary_df = build_station_summary(long_df)
-    pollutant_summary_df = build_pollutant_summary(long_df)
+    pollutant_summary_df = build_pollutant_summary(daily_df)
 
     export_csv(long_df, "air_quality_long.csv")
     export_csv(daily_df, "daily_air_quality.csv")
