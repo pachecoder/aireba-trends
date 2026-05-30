@@ -9,7 +9,7 @@
   /* ---------- estado ---------- */
   const STATE = {
     data: null,
-    filters: { station: "All", pollutant: "NO2", year: "All", severity: "All" },
+    filters: { station: "All", pollutant: "NO2", severity: "All" },
     topN: 20,
     sort: { key: "date", dir: "desc" },
   };
@@ -35,6 +35,11 @@
   };
   const stationList = () => [...new Set((STATE.data?.stations || []).map((s) => normalizeStationName(s.station)))];
   const stationColor = (station) => STATION_COLOR()[normalizeStationName(station)] || cssvar("--brand");
+  const allYears = () => {
+    const years = [];
+    for (let y = STATE.data.summary.period_start; y <= STATE.data.summary.period_end; y++) years.push(y);
+    return years;
+  };
 
   function formatNumber(n, dec) {
     if (n == null || isNaN(n)) return "—";
@@ -149,13 +154,6 @@
     stSel.value = STATE.filters.station;
     stSel.onchange = () => { STATE.filters.station = stSel.value; applyFilters(); };
 
-    // year select
-    const yrSel = $("#fYear");
-    const years = []; for (let y = STATE.data.summary.period_end; y >= STATE.data.summary.period_start; y--) years.push(y);
-    yrSel.innerHTML = `<option value="All">Todos los años</option>` + years.map(y => `<option value="${y}">${y}</option>`).join("");
-    yrSel.value = STATE.filters.year;
-    yrSel.onchange = () => { STATE.filters.year = yrSel.value; applyFilters(); };
-
     // severity segmented
     const sevSeg = $("#fSeverity");
     const sevs = [["All","Todas"],["Moderate","Moderada"],["High","Alta"],["Extreme","Extrema"]];
@@ -169,7 +167,7 @@
     };
 
     $("#resetFilters").onclick = () => {
-      STATE.filters = { station: "All", pollutant: "NO2", year: "All", severity: "All" };
+      STATE.filters = { station: "All", pollutant: "NO2", severity: "All" };
       renderFilters(); applyFilters();
     };
   }
@@ -187,10 +185,6 @@
 
   function updateActiveContext() {
     const f = STATE.filters;
-    const parts = [];
-    parts.push(f.station === "All" ? "todas las estaciones" : f.station);
-    parts.push(POL_LABEL[f.pollutant]);
-    if (f.year !== "All") parts.push(f.year);
     $("#ctxYearly") && ($("#ctxYearly").textContent = `${POL_LABEL[f.pollutant]} · ${f.station === "All" ? "4 estaciones" : f.station}`);
     $("#ctxMonthly") && ($("#ctxMonthly").textContent = `${POL_LABEL[f.pollutant]} · ${f.station === "All" ? "promedio ciudad" : f.station}`);
   }
@@ -219,7 +213,9 @@
   function renderYearlyChart() {
     const f = STATE.filters;
     const sc = STATION_COLOR();
-    const rows = STATE.data.yearly_trends.filter(d => d.pollutant === f.pollutant);
+    const rows = STATE.data.yearly_trends.filter(d =>
+      d.pollutant === f.pollutant
+    );
     const stations = f.station === "All" ? stationList() : [f.station];
     const traces = [];
     stations.forEach(st => {
@@ -259,25 +255,41 @@
      ============================================================ */
   function renderMonthlyChart() {
     const f = STATE.filters;
-    let rows = STATE.data.monthly_trends.filter(d => d.pollutant === f.pollutant);
+    let rows = STATE.data.monthly_trends.filter(d =>
+      d.pollutant === f.pollutant
+    );
     if (f.station !== "All") rows = rows.filter(d => d.station === f.station);
-    const years = []; for (let y = STATE.data.summary.period_start; y <= STATE.data.summary.period_end; y++) years.push(y);
-    // z[month][year] = avg across stations
-    const acc = {}; // key year-month -> {sum,n}
-    rows.forEach(d => { const k = d.year + "-" + d.month; (acc[k] = acc[k] || { s: 0, n: 0 }); acc[k].s += d.avg_value; acc[k].n++; });
-    const z = MONTHS_ES.map((_, mi) => years.map(y => { const a = acc[y + "-" + (mi + 1)]; return a ? a.s / a.n : null; }));
+    const years = allYears();
+    // Weighted by monthly daily coverage so sparse station-months do not dominate the city view.
+    const acc = {};
+    rows.forEach(d => {
+      const k = d.year + "-" + d.month;
+      const weight = Number(d.records_count) || 1;
+      if (!acc[k]) acc[k] = { s: 0, n: 0, stations: new Set() };
+      acc[k].s += d.avg_value * weight;
+      acc[k].n += weight;
+      acc[k].stations.add(d.station);
+    });
+    const z = MONTHS_ES.map((_, mi) => years.map(y => {
+      const a = acc[y + "-" + (mi + 1)];
+      return a ? a.s / a.n : null;
+    }));
+    const coverage = MONTHS_ES.map((_, mi) => years.map(y => {
+      const a = acc[y + "-" + (mi + 1)];
+      return a ? [`${a.stations.size} estaciones`, `${a.n} días agregados`] : ["Sin datos", ""];
+    }));
     const col = polColor(f.pollutant);
     const lay = baseLayout();
     lay.margin = { l: 46, r: 16, t: 10, b: 44 };
     lay.yaxis.gridcolor = "rgba(0,0,0,0)"; lay.xaxis.dtick = 2; lay.xaxis.gridcolor = "rgba(0,0,0,0)";
     lay.yaxis.autorange = "reversed";
     const trace = {
-      type: "heatmap", x: years, y: MONTHS_ES, z,
+      type: "heatmap", x: years, y: MONTHS_ES, z, customdata: coverage,
       xgap: 2, ygap: 2,
       colorscale: [[0, hexA(col, .07)], [0.5, hexA(col, .5)], [1, col]],
       hoverongaps: false,
       colorbar: { thickness: 10, len: .85, outlinewidth: 0, tickfont: { size: 11, color: cssvar("--text-faint") }, title: { text: unitOf(f.pollutant), font: { size: 11, color: cssvar("--text-faint") } } },
-      hovertemplate: `%{y} %{x}<br><b>%{z:.1f} ${unitOf(f.pollutant)}</b><extra></extra>`,
+      hovertemplate: `%{y} %{x}<br><b>%{z:.1f} ${unitOf(f.pollutant)}</b><br>%{customdata[0]} · %{customdata[1]}<extra></extra>`,
     };
     Plotly.react("chartMonthly", [trace], lay, PCONFIG);
   }
@@ -290,11 +302,10 @@
     return STATE.data.anomalies.filter(a =>
       (f.station === "All" || a.station === f.station) &&
       (a.pollutant === f.pollutant) &&
-      (f.year === "All" || a.date.slice(0, 4) === String(f.year)) &&
       (f.severity === "All" || a.severity === f.severity)
     );
   }
-  const SEV_ORDER = { Moderate: 1, High: 2, Extreme: 3 };
+  const SEV_ORDER = { Normal: 0, Moderate: 1, High: 2, Extreme: 3 };
   function renderAnomaliesTable() {
     const all = filteredAnomalies();
     const { key, dir } = STATE.sort;
@@ -345,7 +356,7 @@
     let rows = STATE.data.anomalies.filter(a =>
       (f.station === "All" || a.station === f.station) &&
       (f.severity === "All" || a.severity === f.severity));
-    const years = []; for (let y = STATE.data.summary.period_start; y <= STATE.data.summary.period_end; y++) years.push(y);
+    const years = allYears();
     const traces = POLLUTANTS.map(p => ({
       type: "bar", name: POL_LABEL[p],
       x: years, y: years.map(y => rows.filter(a => a.pollutant === p && +normalizeDateValue(a.date).slice(0, 4) === y).length),
