@@ -1,0 +1,18 @@
+{
+  "project_name": "AireBA Trends",
+  "period_start": 2009,
+  "period_end": 2026,
+  "latest_available_date": "2026-05-22",
+  "pollutants": [
+    "CO",
+    "NO2",
+    "PM10"
+  ],
+  "stations_count": 4,
+  "total_records": 981659,
+  "anomalies_detected": 2309,
+  "daily_records": 43266,
+  "anomaly_rate_daily_pct": 5.34,
+  "anomaly_rate_note": "The anomaly count is measured against daily aggregated records, not hourly records.",
+  "overlap_groups_resolved": 32040
+}

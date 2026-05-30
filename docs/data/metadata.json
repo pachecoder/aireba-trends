@@ -1,0 +1,42 @@
+{
+  "project_name": "AireBA Trends",
+  "data_source": "Official open data from the Government of Buenos Aires City.",
+  "methodology": "Air quality records are normalized from wide to long format, aggregated to daily values, and analyzed per station and pollutant with an IQR statistical baseline plus Isolation Forest when enough history exists.",
+  "limitations": [
+    "This project is historical and exploratory.",
+    "This project is not a real-time alert system.",
+    "This project does not predict future pollution.",
+    "This project does not prove causes of pollution peaks.",
+    "This project depends on official dataset quality."
+  ],
+  "anomaly_methods": [
+    "IQR baseline on daily averages by station and pollutant.",
+    "Isolation Forest on temporal features such as day of week and rolling windows when enough data is available."
+  ],
+  "anomaly_rate_note": "Percentages for detected anomalies should be interpreted over the daily aggregated table because anomaly detection runs on daily records, not on the hourly long table.",
+  "units": {
+    "CO": "ppm",
+    "NO2": "ppb",
+    "PM10": "ug/m3"
+  },
+  "pollutants": [
+    {
+      "id": 1,
+      "pollutant": "CO",
+      "description": "Monóxido de Carbono (en ppm - partes por millón) - Promedio móvil 8 horas - promedio de las 8 horas anteriores",
+      "unit": "ppm"
+    },
+    {
+      "id": 2,
+      "pollutant": "NO2",
+      "description": "Dióxido de Nitrógeno (en ppb - part per billon  - miles de millones) - Promedio horario correspondiente a los 60 minutos anteriores.",
+      "unit": "ppb"
+    },
+    {
+      "id": 3,
+      "pollutant": "PM10",
+      "description": "Material Particulado respirable menor a 10 micrones (en µg/m3 – microgramo por metro cúbico) - Promedio móvil 24  horas - promedio 24 horas anteriores",
+      "unit": "ug/m3"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "station":"La Boca",
+    "latitude":-34.6252584813,
+    "longitude":-58.366373507,
+    "address":"AV. BRASIL 100",
+    "zone":"ZONA MIXTA CON FLUJO VEHICULAR MEDIO-BAJO E INCIDENCIA DE FUENTES FIJAS. EMPLAZADA DENTRO DEL AREA DE INCIDENCIA DE LA CUENCA MATANZA- RIACHUELO",
+    "pollutants":[
+      "CO",
+      "NO2",
+      "PM10"
+    ]
+  },
+  {
+    "station":"Centenario",
+    "latitude":-34.6066080998,
+    "longitude":-58.4320717653,
+    "address":"RAMOS MEJÍA 800",
+    "zone":"(PARQUE CENTENARIO) AREA RESIDENCIAL-COMERCIAL CON FLUJO VEHICULAR MEDIO Y MUY ESCASA INCIDENCIA DE FUENTES FIJAS. PROXIMA A UN ESPACIO ARBOREO UBICADO EN EL CENTRO GEOGRAFICO",
+    "pollutants":[
+      "CO",
+      "NO2",
+      "PM10"
+    ]
+  },
+  {
+    "station":"Córdoba",
+    "latitude":-34.5995643433,
+    "longitude":-58.3915528935,
+    "address":"AV. CORDOBA Y RODRIGUEZ PEÑA",
+    "zone":"AREA RESIDENCIAL-COMERCIAL CON FLUJO VEHICULAR ALTO Y MUY ESCASA INCIDENCIA DE FUENTES FIJAS. REPRESENTATIVA DE UN CONJUNTO DE ZONAS DE SIMILARES CARACTERISTICAS C",
+    "pollutants":[
+      "CO",
+      "NO2",
+      "PM10"
+    ]
+  },
+  {
+    "station":"Palermo",
+    "latitude":-34.5834529467,
+    "longitude":-58.4053598727,
+    "address":"AV. LAS HERAS Y ORTIZ DE OCAMPO",
+    "zone":"ESTACION DESACTIVADA DESDE 30\/06\/2010 AREA RESIDENCIAL-COMERCIAL, CON FLUJO VEHICULAR ALTO Y ESCASA INCIDENCIA DE FUENTES FIJAS. REPRESENTATIVA DE ZONAS DE SIMILA",
+    "pollutants":[
+      "CO",
+      "NO2",
+      "PM10"
+    ]
+  }
+]

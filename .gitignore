@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# macOS / Finder
+.DS_Store
+**/.DS_Store
+.AppleDouble
+.LSOverride
+
+# Large generated artifacts
+data/processed/air_quality_long.csv

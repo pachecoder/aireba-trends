@@ -1,240 +1,313 @@
-# aireba-trends
-
 # AireBA Trends
 
-Final project for the Building AI course
+Historical Air Quality Trends and Anomaly Detection for Buenos Aires
 
-## Summary
+## Project Summary
 
-AireBA Trends analyzes official air quality data from Buenos Aires City between 2009 and 2026. The project visualizes historical trends for NO2, CO and PM10 by monitoring station, and detects unusual daily pollution events using statistical methods and simple machine learning.
+AireBA Trends is a static open data project built for the Building AI course. It analyzes official air quality records from the City of Buenos Aires between 2009 and 2026 and focuses on three pollutants:
 
-## Background
+- NO2
+- CO
+- PM10
 
-Air quality is an important urban issue. In large cities, pollution can change over time because of traffic, weather, urban activity and other environmental factors.
+The project transforms raw official datasets into reproducible CSV and JSON outputs, then presents the results in a lightweight dashboard that can be deployed with GitHub Pages.
 
-Buenos Aires City publishes official air quality datasets, but raw data is not always easy to understand. The information is useful, but it needs cleaning, aggregation and visualization to become more accessible.
+This is a historical and exploratory project. It is not a real-time alert system, it does not forecast future pollution, and it does not prove the causes of unusual events.
 
-This project tries to solve the following problems:
+## What the Project Does
 
-* Public air quality data is difficult to explore in raw format.
-* Long-term pollution trends are not always easy to see.
-* Unusual pollution peaks can be hidden inside large datasets.
-* Citizens, students and researchers may need a simpler way to understand environmental data.
+The pipeline:
 
-My personal motivation is to build a simple open source AI/data science project using real public data from Buenos Aires. I am interested in environmental data, open data, and practical machine learning that can help explain real-world problems.
+- loads raw official datasets from `data/raw/`
+- cleans and normalizes mixed CSV and Excel sources
+- resolves overlapping source files and duplicate observations
+- transforms air quality data from wide format to long format
+- aggregates hourly measurements into daily values
+- calculates yearly and monthly pollutant trends
+- detects unusual daily events
+- exports processed CSV files to `data/processed/`
+- exports frontend-ready JSON files to `docs/data/`
 
-This topic is important because air quality affects people’s daily life and health, especially children, older adults and people with respiratory conditions.
+The dashboard:
 
-## How is it used?
+- shows summary cards
+- lets users filter by pollutant, station, year, and anomaly severity
+- displays yearly pollutant trends
+- displays monthly seasonality as a heatmap
+- shows an anomaly ranking table
+- shows anomaly charts
+- shows official monitoring stations on a map
 
-The project is used as a static data analysis and visualization tool.
+## Why This Project Matters
 
-First, Python scripts process the official air quality datasets. The pipeline cleans the data, transforms it into a more useful format, calculates monthly and yearly trends, and detects daily anomalies.
+Air quality data is publicly available, but raw environmental datasets are usually difficult to explore directly. Long-term trends, seasonal behavior, and unusual pollution spikes are not easy to understand from raw tables alone.
 
-Then, the project generates static JSON and CSV files that can be visualized in a simple dashboard hosted on GitHub Pages.
+AireBA Trends aims to make that data easier to explore for:
 
-The dashboard can be used to answer questions such as:
+- students
+- citizens
+- journalists
+- researchers
+- open data enthusiasts
 
-* How did NO2 evolve over the years in each station?
-* Which station had the highest PM10 values?
-* Are there monthly patterns in CO, NO2 or PM10?
-* Which days had unusual pollution peaks?
-* Which pollutant had more extreme anomalies?
+## Data Source
 
-The main users could be:
+Data source: official open data from the Government of Buenos Aires City.
 
-* students
-* citizens
-* journalists
-* researchers
-* open data enthusiasts
-* environmental organizations
+The repository currently uses these raw files:
 
-The project is not a real-time alert system. It is a historical and exploratory analysis tool.
+- `calidad-aire.csv`
+- `calidad-de-aire-2017.xlsx`
+- `calidad-de-aire-2018.xlsx`
+- `calidad-de-aire-2019.xlsx`
+- `calidad_aire_2025.csv`
+- `calidad_aire_2026.csv`
+- `estaciones-ambientales.xlsx`
+- `contaminantes.xlsx`
 
-Example of the data processing flow:
-
-```python
-def main():
-    raw_data = load_air_quality_data()
-    stations = load_stations_data()
-
-    clean_data = clean_and_normalize(raw_data)
-    long_data = transform_wide_to_long(clean_data)
-    enriched_data = merge_with_stations(long_data, stations)
-
-    yearly_trends = calculate_yearly_trends(enriched_data)
-    monthly_trends = calculate_monthly_trends(enriched_data)
-    anomalies = detect_anomalies(enriched_data)
-
-    export_static_files(yearly_trends, monthly_trends, anomalies)
-
-main()
-```
-
-The expected architecture is:
+## Repository Structure
 
 ```text
-Official datasets
-        ↓
-Python data pipeline
-        ↓
-Clean CSV / JSON files
-        ↓
-Static frontend
-        ↓
-GitHub Pages dashboard
+aireba-trends/
+├── data/
+│   ├── raw/
+│   └── processed/
+├── docs/
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   └── data/
+├── notebooks/
+│   └── exploration.ipynb
+├── scripts/
+│   ├── main.py
+│   ├── load_data.py
+│   ├── clean_data.py
+│   ├── transform_data.py
+│   ├── trend_analysis.py
+│   ├── anomaly_detection.py
+│   └── export_static_data.py
+├── AGENTS.md
+├── LICENSE
+├── pyproject.toml
+├── README.md
+└── uv.lock
 ```
 
-## Data sources and AI methods
+## How to Run the Pipeline
 
-The project uses official open data from the Government of Buenos Aires City.
+This project uses `uv` as the Python dependency manager.
 
-The main datasets are:
+### 1. Install dependencies
 
-| Dataset | Description |
-| ------ | ----------- |
-| Air quality measurements | Historical pollution measurements from 2009 to 2026 |
-| Environmental stations | Location and description of monitoring stations |
-| Pollutants | Description of measured pollutants |
+```bash
+uv sync
+```
 
-The project focuses on three pollutants:
+### 2. Run the full pipeline
 
-| Pollutant | Description |
-| --------- | ----------- |
-| NO2 | Nitrogen dioxide |
-| CO | Carbon monoxide |
-| PM10 | Particulate matter smaller than 10 micrometers |
+```bash
+uv run python scripts/main.py
+```
 
-The original data has columns such as:
+This command:
+
+1. loads the raw datasets
+2. cleans and normalizes them
+3. consolidates overlapping source files
+4. transforms the data into long format
+5. generates daily, yearly, and monthly outputs
+6. detects anomalies
+7. exports CSV files to `data/processed/`
+8. exports JSON files to `docs/data/`
+
+## How to View the Dashboard
+
+Serve the `docs/` directory locally:
+
+```bash
+uv run python -m http.server 8000 -d docs
+```
+
+Then open:
 
 ```text
-fecha
-hora
-co_centenario
-no2_centenario
-pm10_centenario
-co_cordoba
-no2_cordoba
-pm10_cordoba
+http://localhost:8000
 ```
 
-The pipeline transforms this wide format into a long format:
+The static site is designed to be compatible with GitHub Pages.
 
-```text
-date
-hour
-datetime
-year
-month
-station
-pollutant
-value
-latitude
-longitude
-zone
-```
+## Output Files
 
-The main data analysis techniques are:
+### Processed CSV files
 
-* data cleaning
-* data normalization
-* wide-to-long transformation
-* monthly aggregation
-* yearly aggregation
-* rolling averages
-* trend analysis
-* anomaly detection
+Generated in `data/processed/`:
 
-The AI / machine learning part is focused on anomaly detection.
+- `air_quality_long.csv`
+- `daily_air_quality.csv`
+- `yearly_trends.csv`
+- `monthly_trends.csv`
+- `anomalies.csv`
+- `station_summary.csv`
+- `pollutant_summary.csv`
+- `source_overlap_report.csv`
 
-The first version can use statistical baselines such as:
+### Frontend JSON files
 
-* Z-score
-* IQR
-* rolling mean and standard deviation
+Generated in `docs/data/`:
 
-A simple unsupervised machine learning model can also be used:
+- `summary.json`
+- `yearly_trends.json`
+- `monthly_trends.json`
+- `anomalies.json`
+- `stations.json`
+- `metadata.json`
 
-* Isolation Forest
+## Data Model
 
-Isolation Forest is useful because the dataset does not have labels saying which days are anomalies. The model can learn which observations look normal and which ones look unusual.
+### Long air quality table
 
-The project does not need deep learning because the goal is not image recognition, speech processing or a complex prediction system. The data is structured and historical, so simple statistical methods and unsupervised machine learning are more appropriate and easier to explain.
+Main fields:
 
-## Challenges
+- `datetime`
+- `date`
+- `year`
+- `month`
+- `day`
+- `hour`
+- `station`
+- `pollutant`
+- `value`
+- `latitude`
+- `longitude`
+- `zone`
 
-This project has some important limitations.
+### Daily table
 
-First, the project does not prove the cause of pollution events. If the system detects an unusual peak, it only means that the value was rare compared with the historical pattern of the same station and pollutant.
+Main fields:
 
-For example, if PM10 is unusually high on a specific day, the project cannot automatically say if it was caused by traffic, weather, construction, fires or another event.
+- `date`
+- `year`
+- `month`
+- `station`
+- `pollutant`
+- `daily_avg`
+- `daily_min`
+- `daily_max`
+- `daily_median`
+- `daily_std`
+- `records_count`
 
-Second, the analysis depends on the quality and completeness of the official dataset. Missing values, sensor errors or changes in monitoring methods can affect the results.
+## Methods
 
-Third, the project does not estimate the exact air quality of every street or neighborhood. It only uses official monitoring stations.
+### Trend analysis
 
-The project does not solve:
+The pipeline computes yearly and monthly summaries by:
 
-* real-time pollution alerts
-* exact street-level pollution estimation
-* causal explanation of pollution peaks
-* medical recommendations
-* government-level environmental policy decisions
+- station
+- pollutant
 
-Ethical considerations:
+Main statistics:
 
-* The dashboard should not create panic.
-* Anomalies should be presented as unusual values, not proven causes.
-* The data source and limitations must be clearly explained.
-* The project should not replace official environmental reports.
+- mean
+- median
+- minimum
+- maximum
+- standard deviation
+- record count
 
-## What next?
+### Anomaly detection
 
-The project could grow in several ways.
+The project uses daily aggregated data to detect unusual pollution events.
 
-Future improvements could include:
+Implemented methods:
 
-* adding weather data such as temperature, humidity, wind and rain
-* adding public event or traffic information
-* comparing anomalies with external events
-* building a better interactive dashboard
-* publishing an automatic monthly report
-* adding more pollutants if the data is available
-* improving anomaly detection models
-* adding explainability techniques
-* creating a public API
+- IQR baseline by `station + pollutant`
+- Isolation Forest by `station + pollutant` when enough historical data exists
 
-To move the project forward, I would need more knowledge and support in:
+Isolation Forest features currently include:
 
-* environmental science
-* air pollution standards
-* geospatial analysis
-* time series analysis
-* data visualization design
-* validation of anomaly detection results
+- `daily_avg`
+- `month`
+- `year`
+- `day_of_week`
+- `rolling_mean_7d`
+- `rolling_mean_30d`
+- `rolling_std_30d`
 
-A more advanced version could combine air quality, weather and traffic data to better understand why some pollution peaks happen.
+Important note:
 
-## Acknowledgments
+- anomaly rates are measured against the daily aggregated table, not the hourly long table
 
-This project uses official open data from the Government of Buenos Aires City.
+Detected anomalies indicate unusual values. They do not prove the cause of the event.
 
-Main data source:
+## Frontend Behavior
 
-* Buenos Aires City Open Data - Air Quality dataset
+The frontend is intentionally static:
 
-Open source tools and libraries planned for the project:
+- no backend
+- no client-side model training
+- no live data fetching from official sources
+- no recalculation of trends or anomalies in the browser
 
-* Python
-* Pandas
-* NumPy
-* Scikit-learn
-* Matplotlib
-* Plotly
-* Leaflet.js
-* GitHub Pages
+All heavy processing happens in Python before export.
 
-This project was created as the final project for the Building AI course by Reaktor Innovations and the University of Helsinki.
+## Current Scope
 
-The idea is inspired by open data, environmental analytics and practical machine learning for public interest.
+Included:
+
+- historical trend analysis
+- monthly and yearly summaries
+- source overlap consolidation
+- station-level comparison
+- pollutant-level comparison
+- daily anomaly detection
+- static CSV and JSON exports
+- static dashboard
+
+Not included:
+
+- real-time alerts
+- forecasting
+- street-level pollution estimation
+- causal attribution
+- medical guidance
+- public policy recommendations
+- backend API
+- user authentication
+
+## Limitations
+
+- The project is historical and exploratory.
+- The project is not a real-time alert system.
+- The project does not predict future pollution.
+- The project does not prove causes of pollution peaks.
+- The project depends on official dataset quality.
+- The project only represents areas covered by official monitoring stations.
+- Some stations have incomplete or irregular historical coverage.
+- The project should not replace official environmental reports.
+
+## Ethical Considerations
+
+- Unusual events are presented as anomalies, not confirmed causes.
+- The dashboard should not be interpreted as a public safety alert system.
+- Missing values, station shutdowns, and inconsistent source coverage can affect the analysis.
+- Results should be read as an exploratory data product, not as regulatory or medical advice.
+
+## Libraries and Tools Used
+
+- Python
+- pandas
+- NumPy
+- scikit-learn
+- openpyxl
+- Plotly.js
+- Leaflet.js
+- GitHub Pages
+- uv
+
+## Course Context
+
+This project was created as a final project for the Building AI course by Reaktor and the University of Helsinki.
+
+The AI component is anomaly detection. Instead of building a predictive system, the project uses interpretable statistical baselines and an unsupervised anomaly detection model to highlight daily values that behave differently from the historical pattern of the same station and pollutant.
