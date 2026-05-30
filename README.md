@@ -2,6 +2,14 @@
 
 Historical Air Quality Trends and Anomaly Detection for Buenos Aires
 
+## Live Demo
+
+The public GitHub Pages version of the dashboard is available here:
+
+[AireBA Trends Live Dashboard](https://pachecoder.github.io/aireba-trends/)
+
+This static site is generated from the processed outputs in `docs/data/` and published directly from the `docs/` folder.
+
 ## Project Summary
 
 AireBA Trends is a static open data project built for the Building AI course. It analyzes official air quality records from the City of Buenos Aires between 2009 and 2026 and focuses on three pollutants:
